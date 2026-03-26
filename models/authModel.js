@@ -16,6 +16,9 @@ const authSchema = new mongoose.Schema(
         required: [true, "Please provide your phone number"],   
         unique: true,
     },
+    formattedPhone : {
+        type: String,
+    },
     location: {
         type: String,
         required: [true, "Please provide your location"],       

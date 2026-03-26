@@ -1,10 +1,11 @@
 const user = require('../models/authModel');
-const {middleware, generateToken} = require('../Middleware/Middleware');
+const {generateToken} = require('../Middleware/Middleware');
 const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
-const nodemailer = require('nodemailer')
 const { generateOtp } = require('../utils/otp.helper');
 const { sendEmail } = require('../utils/mail.helper');
+const { formatPhone } = require("../utils/phone");
+const { sendsms } = require('../utils/sms.helper');
+const { otpSMS } = require("../templates/smsTemplate");
 const {
   registerSuccessTemplate,
   registerOtpTemplate,
@@ -14,6 +15,11 @@ const {
   resetPasswordTemplate,
   passwordChangedTemplate
 } = require('../templates/emailTemplate');
+const {
+  getDevice,
+  getIP,
+  getLocation,
+} = require("../utils/info.helper");
 
 
 exports.signUp = async (req, res, next) => {
@@ -28,7 +34,20 @@ exports.signUp = async (req, res, next) => {
       );
     }
 
-    const checkexist = await user.findOne({ $or: [{ email }, { phone }] });
+
+    const formattedPhone = null;
+    if (phone) {
+      formattedPhone = formatPhone(phone);
+      if (!formattedPhone) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Invalid phone number format. Please provide a valid phone number."
+        });
+      }
+    }
+
+    
+    const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (checkexist) {
       return next(
         res.status(400).json({
@@ -43,7 +62,16 @@ exports.signUp = async (req, res, next) => {
     const otp = generateOtp();
 
 
-    const userData = new user({ name, email, phone, location, passcode, password: hashpassword, otp, otpExpiry: Date.now() + 10 * 60 * 1000 });
+    const userData = new user({
+      name,
+      email,
+      phone: formattedPhone,
+      location,
+      passcode,
+      password: hashpassword,
+      otp,
+      otpExpiry: Date.now() + 10 * 60 * 1000
+    });
     await userData.save();
 
 
@@ -63,9 +91,19 @@ exports.signUp = async (req, res, next) => {
       console.log("Email failed:", err.message);
     }
 
+    const message = otpSMS({
+      otp: otp,
+      type: "signup", // signup | login | reset
+    });
+
+    await sendsms({
+      to: formattedPhone,
+      message,
+    });
+
     res.status(201).json({
       status: "success",
-      message: "User Created",
+      message: "OTP sent for verification Process",
       data: userData
     });
   } catch (err) {
@@ -79,7 +117,7 @@ exports.signUp = async (req, res, next) => {
 exports.verifySignupOTP = async (req, res, next) => {
   try {
     const { email, phone, otp } = req.body;
-    if (!email && !phone || !otp) {
+    if ((!email && !phone) || !otp) {
       return next(
         res.status(400).json({
           status: "fail",
@@ -88,7 +126,18 @@ exports.verifySignupOTP = async (req, res, next) => {
       );
     }
 
-    const checkexist = await user.findOne({ $or: [{ email }, { phone }] });
+    const formattedPhone = null;
+    if (phone) {
+      formattedPhone = formatPhone(phone);
+      if (!formattedPhone) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Invalid phone number format. Please provide a valid phone number."
+        });
+      }
+    }
+
+    const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
         res.status(400).json({
@@ -157,7 +206,7 @@ exports.login = async (req, res, next) => {
   try {
     const { email, phone, password } = req.body;
 
-    if (!email && !phone || !password) {
+    if ((!email && !phone) || !password) {
       return next(
         res.status(400).json({
           status: "fail",
@@ -166,12 +215,23 @@ exports.login = async (req, res, next) => {
       );
     }
 
-    const checkexist = await user.findOne({ $or: [{ email }, { phone }] });
+    const formattedPhone = null;
+    if (phone) {
+      formattedPhone = formatPhone(phone);
+      if (!formattedPhone) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Invalid phone number format. Please provide a valid phone number."
+        });
+      }
+    }
+
+    const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
         res.status(400).json({
           status: "fail",
-          message: "User dose not exist",
+          message: "User does not exist with this email or phone number",
         })
       );
     }
@@ -190,7 +250,7 @@ exports.login = async (req, res, next) => {
       return (
         res.status(400).json({
           status: "fail",
-          message: "Worng Password",
+          message: "Invalid password. Please provide the correct password to login.",
         })
       );
     }
@@ -213,6 +273,17 @@ exports.login = async (req, res, next) => {
       console.log("Email failed:", err.message);
     }
 
+
+    const message = otpSMS({
+      otp: otp,
+      type: "login", // signup | login | reset
+    });
+
+    await sendsms({
+      to: formattedPhone,
+      message,
+    });
+
     res.status(200).json({
       token,
       data: checkexist
@@ -229,7 +300,7 @@ exports.login = async (req, res, next) => {
 exports.verifyLoginOTP = async (req, res, next) => {
   try {
     const { email, phone, otp } = req.body;
-    if (!email && !phone || !otp) {
+    if ((!email && !phone) || !otp) {
       return next(
         res.status(400).json({
           status: "fail",
@@ -238,7 +309,18 @@ exports.verifyLoginOTP = async (req, res, next) => {
       );
     }
 
-    const checkexist = await user.findOne({ $or: [{ email }, { phone }] });
+    const formattedPhone = null;
+    if (phone) {
+      formattedPhone = formatPhone(phone);
+      if (!formattedPhone) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Invalid phone number format. Please provide a valid phone number."
+        });
+      }
+    }
+
+    const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
         res.status(400).json({
@@ -270,13 +352,24 @@ exports.verifyLoginOTP = async (req, res, next) => {
     checkexist.otp = null;
     checkexist.otpExpiry = null;
     await checkexist.save();
+    
+
+    const device = getDevice(req);
+    const ip = getIP(req);
+    const location = await getLocation(ip);
 
 
     try {
       await sendEmail({
         to: email || checkexist.email,
         subject: "KikStart Login Successful - New Device Alert ✅",
-        html: loginSuccessTemplate(checkexist.name, new Date().toLocaleString(), "", "India (Approx)", "#")
+        html: loginSuccessTemplate(
+          checkexist.name,
+          new Date().toLocaleString(),
+          device,
+          location,
+          "#"
+        )
       });
     } catch (err) {
       console.log("Email failed:", err.message);
@@ -312,7 +405,18 @@ exports.forgetPassword = async (req, res, next) => {
       );
     }
 
-    const checkexist = await user.findOne({ $or: [{ email }, { phone }] });
+    const formattedPhone = null;
+    if (phone) {
+      formattedPhone = formatPhone(phone);
+      if (!formattedPhone) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Invalid phone number format. Please provide a valid phone number."
+        });
+      }
+    }
+
+    const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
         res.status(400).json({
@@ -322,8 +426,8 @@ exports.forgetPassword = async (req, res, next) => {
       );
     }
 
-    const generateOtp = await generateOTP();
-    checkexist.otp = generateOtp;
+    const otp = await generateOtp();
+    checkexist.otp = otp;
     checkexist.otpExpiry = Date.now() + 5 * 60 * 1000;
     await checkexist.save();
 
@@ -331,11 +435,21 @@ exports.forgetPassword = async (req, res, next) => {
       await sendEmail({
         to: email || checkexist.email,
         subject: "KikStart Password Reset OTP - Verify Your Identity 🔐",
-        html: forgotPasswordOtpTemplate(checkexist.name, generateOtp)
+        html: forgotPasswordOtpTemplate(checkexist.name, otp)
       });
     } catch (err) {
       console.log("Email failed:", err.message);
     }
+
+    const message = otpSMS({
+      otp: otp,
+      type: "reset", // signup | login | reset
+    });
+
+    await sendsms({
+      to: formattedPhone,
+      message,
+    });
 
     const payload = {
       _id: checkexist._id
@@ -359,7 +473,7 @@ exports.forgetPassword = async (req, res, next) => {
 exports.verifyOtp = async (req, res, next) => {
   try {
     const { email, phone, otp } = req.body;
-    if (!email && !phone || !otp) {
+    if ((!email && !phone) || !otp) {
       return next(
         res.status(400).json({
           status: "fail",
@@ -368,7 +482,18 @@ exports.verifyOtp = async (req, res, next) => {
       );
     }
 
-    const checkexist = await user.findOne({ $or: [{ email }, { phone }] });
+    const formattedPhone = null;
+    if (phone) {
+      formattedPhone = formatPhone(phone);
+      if (!formattedPhone) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Invalid phone number format. Please provide a valid phone number."
+        });
+      }
+    }
+
+    const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
         res.status(400).json({
@@ -427,7 +552,7 @@ exports.verifyOtp = async (req, res, next) => {
 exports.resetPassword = async (req, res, next) => {
   try {
     const { email, phone, password } = req.body;
-    if (!email && !phone || !password) {
+    if ((!email && !phone) || !password) {
       return next(
         res.status(400).json({
           status: "fail",
@@ -436,7 +561,18 @@ exports.resetPassword = async (req, res, next) => {
       );
     }
 
-    const checkexist = await user.findOne({ $or: [{ email }, { phone }] });
+    const formattedPhone = null;
+    if (phone) {
+      formattedPhone = formatPhone(phone);
+      if (!formattedPhone) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Invalid phone number format. Please provide a valid phone number."
+        });
+      }
+    }
+
+    const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
         res.status(400).json({
