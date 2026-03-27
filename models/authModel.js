@@ -46,7 +46,15 @@ const authSchema = new mongoose.Schema(
         default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         index: { expires: 0 }
     },
-        role : {
+    loginAttempts: { 
+        type: Number, 
+        default: 0 
+    },
+    lockUntil: {
+        Date, 
+        default: null 
+    },
+    role: {
         type: String,
         enum: ["user", "admin"],
         default: "user"

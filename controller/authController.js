@@ -50,7 +50,7 @@ exports.signUp = async (req, res, next) => {
     const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (checkexist) {
       return next(
-        res.status(400).json({
+        res.status(409).json({
           status: "fail",
           message: "User already exist with this email or phone number"
         })
@@ -140,7 +140,7 @@ exports.verifySignupOTP = async (req, res, next) => {
     const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
-        res.status(400).json({
+        res.status(404).json({
           status: "fail",
           message: "User dose not exist with this email or phone number"
         })
@@ -158,7 +158,7 @@ exports.verifySignupOTP = async (req, res, next) => {
 
     if (checkexist.otpExpiry < Date.now()) {
       return next(
-        res.status(400).json({
+        res.status(410).json({
           status: "fail",
           message: "OTP has expired. Please request a new one."
         })
@@ -187,7 +187,7 @@ exports.verifySignupOTP = async (req, res, next) => {
     console.log(token);
 
 
-    res.status(201).json({
+    res.status(200).json({
       status: "success",
       message: "OTP verified successfully",
       data: checkexist,
@@ -229,7 +229,7 @@ exports.login = async (req, res, next) => {
     const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
-        res.status(400).json({
+        res.status(404).json({
           status: "fail",
           message: "User does not exist with this email or phone number",
         })
@@ -248,7 +248,7 @@ exports.login = async (req, res, next) => {
     const checkpassword = await bcrypt.compare(password, checkexist.password);
     if (!checkpassword) {
       return (
-        res.status(400).json({
+        res.status(401).json({
           status: "fail",
           message: "Invalid password. Please provide the correct password to login.",
         })
@@ -285,6 +285,8 @@ exports.login = async (req, res, next) => {
     });
 
     res.status(200).json({
+      status: "success",
+      message: "OTP sent for verification Process",
       token,
       data: checkexist
     });
@@ -323,7 +325,7 @@ exports.verifyLoginOTP = async (req, res, next) => {
     const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
-        res.status(400).json({
+        res.status(404).json({
           status: "fail",
           message: "User dose not exist with this email or phone number"
         })
@@ -332,7 +334,7 @@ exports.verifyLoginOTP = async (req, res, next) => {
 
     if (checkexist.otp !== otp) {
       return next(
-        res.status(400).json({
+        res.status(401).json({
           status: "fail",
           message: "Invalid OTP provided"
         })
@@ -341,7 +343,7 @@ exports.verifyLoginOTP = async (req, res, next) => {
 
     if (checkexist.otpExpiry < Date.now()) {
       return next(
-        res.status(400).json({
+        res.status(410).json({
           status: "fail",
           message: "OTP has expired. Please request a new one."
         })
@@ -380,7 +382,7 @@ exports.verifyLoginOTP = async (req, res, next) => {
     console.log(token);
 
 
-    res.status(201).json({
+    res.status(200).json({
       status: "success",
       message: "OTP verified successfully",
       data: checkexist,
@@ -419,9 +421,9 @@ exports.forgetPassword = async (req, res, next) => {
     const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
-        res.status(400).json({
+        res.status(404).json({
           status: "fail",
-          message: "User dose not exist",
+          message: "User dose not exist with this email or phone number",
         })
       );
     }
@@ -496,7 +498,7 @@ exports.verifyOtp = async (req, res, next) => {
     const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
-        res.status(400).json({
+        res.status(404).json({
           status: "fail",
           message: "User dose not exist"
         })
@@ -505,7 +507,7 @@ exports.verifyOtp = async (req, res, next) => {
 
     if (checkexist.otp !== otp) {
       return next(
-        res.status(400).json({
+        res.status(401).json({
           status: "fail",
           message: "Invalid OTP"
         })
@@ -514,7 +516,7 @@ exports.verifyOtp = async (req, res, next) => {
 
     if (checkexist.otpExpiry < Date.now()) {
       return next(
-        res.status(400).json({
+        res.status(410).json({
           status: "fail",
           message: "OTP has expired"
         })
@@ -535,7 +537,7 @@ exports.verifyOtp = async (req, res, next) => {
       console.log("Email failed:", err.message);
     }
 
-    res.status(201).json({
+    res.status(200).json({
       status: "success",
       message: "OTP verified successfully",
       data: checkexist,
@@ -575,7 +577,7 @@ exports.resetPassword = async (req, res, next) => {
     const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
     if (!checkexist) {
       return next(
-        res.status(400).json({
+        res.status(404).json({
           status: "fail",
           message: "User dose not exist with this email or phone number",
         })
@@ -585,7 +587,7 @@ exports.resetPassword = async (req, res, next) => {
     const checkpassword = await bcrypt.compare(password, checkexist.password);
     if (checkpassword) {
       return (
-        res.status(400).json({
+        res.status(409).json({
           status: "fail",
           message: "Password used once",
         })
