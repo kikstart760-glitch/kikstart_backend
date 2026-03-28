@@ -44,6 +44,13 @@ const authSchema = new mongoose.Schema(
         type: Number,
         default: 0 
     },
+    otpAttempts: {
+        type: Number,
+        default: 0
+    },
+    otpBlockedUntil: {
+        type: Date
+    },
     isverified : {
         type: Boolean,
         default: false,

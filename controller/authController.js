@@ -7,6 +7,7 @@ const {
   compareOtp
 } = require('../utils/otp.helper');
 const { applyOtpSecurity } = require('../utils/otpLimiter');
+const { checkOtpBlock } = require('../utils/otpGuard');
 const { sendEmail } = require('../utils/mail.helper');
 const { formatPhone } = require("../utils/phone");
 const { sendsms } = require('../utils/sms.helper');
@@ -168,6 +169,17 @@ exports.verifySignupOTP = async (req, res, next) => {
       );
     }
 
+    try {
+      checkOtpBlock(checkexist);
+    } catch (err) {
+      return next(
+        res.status(429).json({
+          status: "fail",
+          message: err.message,
+        })
+      );
+    }
+
     const isOtpValid = await compareOtp(otp, checkexist.otp);
     if (!isOtpValid) {
       return next(
@@ -187,12 +199,23 @@ exports.verifySignupOTP = async (req, res, next) => {
       );
     }
 
+    if (!isOtpValid) {
+      checkexist.otpAttempts += 1;
+      if (checkexist.otpAttempts >= 5) {
+        checkexist.otpBlockedUntil = Date.now() + 30 * 60 * 1000; // Block for 30 minutes
+        checkexist.otpAttempts = 0; // Reset attempts after blocking
+      }
+    }
+    await checkexist.save();
+
     checkexist.isverified = true;
     checkexist.otp = null;
     checkexist.otpExpiry = null;
     checkexist.deleteAt = undefined;
     checkexist.otpRequestCount = 0;
     checkexist.otpCooldown = null;
+    checkexist.otpAttempts = 0;
+    checkexist.otpBlockedUntil = null;
     await checkexist.save();
 
 
@@ -368,6 +391,17 @@ exports.verifyLoginOTP = async (req, res, next) => {
       );
     }
 
+    try {
+      checkOtpBlock(checkexist);
+    } catch (err) {
+      return next(
+        res.status(429).json({
+          status: "fail",
+          message: err.message,
+        })
+      );
+    }
+
     const isOtpValid = await compareOtp(otp, checkexist.otp);
     if (!isOtpValid) {
       return next(
@@ -387,11 +421,22 @@ exports.verifyLoginOTP = async (req, res, next) => {
       );
     }
 
+    if (!isOtpValid) {
+      checkexist.otpAttempts += 1;
+      if (checkexist.otpAttempts >= 5) {
+        checkexist.otpBlockedUntil = Date.now() + 30 * 60 * 1000;
+        checkexist.otpAttempts = 0; // Reset attempts after blocking
+      }
+    }
+    await checkexist.save();
+
 
     checkexist.otp = null;
     checkexist.otpExpiry = null;
     checkexist.otpRequestCount = 0;
     checkexist.otpCooldown = null;
+    checkexist.otpAttempts = 0;
+    checkexist.otpBlockedUntil = null;
     await checkexist.save();
     
 
@@ -556,6 +601,17 @@ exports.verifyOtp = async (req, res, next) => {
       );
     }
 
+    try {
+      checkOtpBlock(checkexist);
+    } catch (err) {
+      return next(
+        res.status(429).json({
+          status: "fail",
+          message: err.message,
+        })
+      );
+    }
+
     const isOtpValid = await compareOtp(otp, checkexist.otp);
     if (!isOtpValid) {
       return next(
@@ -575,10 +631,21 @@ exports.verifyOtp = async (req, res, next) => {
       );
     }
 
+    if (!isOtpValid) {
+      checkexist.otpAttempts += 1;
+      if (checkexist.otpAttempts >= 5) {
+        checkexist.otpBlockedUntil = Date.now() + 30 * 60 * 1000;
+        checkexist.otpAttempts = 0; // Reset attempts after blocking
+      }
+    }
+    await checkexist.save();
+
     checkexist.otp = null;
     checkexist.otpExpiry = null;
     checkexist.otpRequestCount = 0;
     checkexist.otpCooldown = null;
+    checkexist.otpAttempts = 0;
+    checkexist.otpBlockedUntil = null;
     await checkexist.save();
 
     try {
