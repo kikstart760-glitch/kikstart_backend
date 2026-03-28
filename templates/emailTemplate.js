@@ -181,3 +181,18 @@ export const passwordChangedTemplate = (name) =>
     <p class="text">If this wasn’t you, contact support immediately.</p>
     <a href="mailto:support@kikstart.com" class="btn">Contact Support</a>
   `);
+// Resend OTP
+export const resendOtpTemplate = (name, otp) =>
+  baseTemplate(`
+    <div class="title">OTP Resent Successfully 🔄</div>
+    <p class="text">
+      Hi ${name}, as requested, we have resent your One-Time Password (OTP).
+    </p>
+    <div class="otp">${otp}</div>
+    <p class="text">
+      This OTP is valid for the next 10 minutes. Please use it to continue your verification process.
+    </p>
+    <p class="text">
+      If you did not request this, please ignore this email or secure your account immediately.
+    </p>
+  `);

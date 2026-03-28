@@ -1,7 +1,12 @@
 const user = require('../models/authModel');
 const {generateToken} = require('../Middleware/Middleware');
 const bcrypt = require('bcryptjs')
-const { generateOtp } = require('../utils/otp.helper');
+const { 
+  generateOtp,
+  hashOtp,
+  compareOtp
+} = require('../utils/otp.helper');
+const { applyOtpSecurity } = require('../utils/otpLimiter');
 const { sendEmail } = require('../utils/mail.helper');
 const { formatPhone } = require("../utils/phone");
 const { sendsms } = require('../utils/sms.helper');
@@ -13,7 +18,8 @@ const {
   loginSuccessTemplate,
   forgotPasswordOtpTemplate,
   resetPasswordTemplate,
-  passwordChangedTemplate
+  passwordChangedTemplate,
+  resendOtpTemplate
 } = require('../templates/emailTemplate');
 const {
   getDevice,
@@ -57,9 +63,21 @@ exports.signUp = async (req, res, next) => {
       );
     }
 
+    try {
+      applyOtpSecurity(checkexist || { email, phone: formattedPhone });
+    } catch (err) {
+      return next(
+        res.status(429).json({
+          status: "fail",
+          message: err.message,
+        })
+      );
+    }
+
     const salt = await bcrypt.genSalt(10)
     const hashpassword = await bcrypt.hash(password, salt);
     const otp = generateOtp();
+    await hashOtp(otp);
 
 
     const userData = new user({
@@ -70,7 +88,10 @@ exports.signUp = async (req, res, next) => {
       passcode,
       password: hashpassword,
       otp,
-      otpExpiry: Date.now() + 10 * 60 * 1000
+      otpExpiry: Date.now() + 10 * 60 * 1000,
+      otpRequestDate: new Date(),
+      otpRequestCount: 1,
+      otpCooldown: Date.now() + 60 * 1000,
     });
     await userData.save();
 
@@ -147,7 +168,8 @@ exports.verifySignupOTP = async (req, res, next) => {
       );
     }
 
-    if (checkexist.otp !== otp) {
+    const isOtpValid = await compareOtp(otp, checkexist.otp);
+    if (!isOtpValid) {
       return next(
         res.status(400).json({
           status: "fail",
@@ -169,6 +191,8 @@ exports.verifySignupOTP = async (req, res, next) => {
     checkexist.otp = null;
     checkexist.otpExpiry = null;
     checkexist.deleteAt = undefined;
+    checkexist.otpRequestCount = 0;
+    checkexist.otpCooldown = null;
     await checkexist.save();
 
 
@@ -255,7 +279,19 @@ exports.login = async (req, res, next) => {
       );
     }
 
+    try {
+      applyOtpSecurity(checkexist);
+    } catch (err) {
+      return next(
+        res.status(429).json({
+          status: "fail",
+          message: err.message,
+        })
+      );
+    }
+
     const otp = generateOtp();
+    await hashOtp(otp);
     checkexist.otp = otp;
     checkexist.otpExpiry = Date.now() + 10 * 60 * 1000;
     await checkexist.save();
@@ -332,7 +368,8 @@ exports.verifyLoginOTP = async (req, res, next) => {
       );
     }
 
-    if (checkexist.otp !== otp) {
+    const isOtpValid = await compareOtp(otp, checkexist.otp);
+    if (!isOtpValid) {
       return next(
         res.status(401).json({
           status: "fail",
@@ -353,6 +390,8 @@ exports.verifyLoginOTP = async (req, res, next) => {
 
     checkexist.otp = null;
     checkexist.otpExpiry = null;
+    checkexist.otpRequestCount = 0;
+    checkexist.otpCooldown = null;
     await checkexist.save();
     
 
@@ -428,7 +467,19 @@ exports.forgetPassword = async (req, res, next) => {
       );
     }
 
-    const otp = await generateOtp();
+    try {
+      applyOtpSecurity(checkexist);
+    } catch (err) {
+      return next(
+        res.status(429).json({
+          status: "fail",
+          message: err.message,
+        })
+      );
+    }
+
+    const otp = generateOtp();
+    await hashOtp(otp);
     checkexist.otp = otp;
     checkexist.otpExpiry = Date.now() + 5 * 60 * 1000;
     await checkexist.save();
@@ -505,7 +556,8 @@ exports.verifyOtp = async (req, res, next) => {
       );
     }
 
-    if (checkexist.otp !== otp) {
+    const isOtpValid = await compareOtp(otp, checkexist.otp);
+    if (!isOtpValid) {
       return next(
         res.status(401).json({
           status: "fail",
@@ -525,6 +577,8 @@ exports.verifyOtp = async (req, res, next) => {
 
     checkexist.otp = null;
     checkexist.otpExpiry = null;
+    checkexist.otpRequestCount = 0;
+    checkexist.otpCooldown = null;
     await checkexist.save();
 
     try {
@@ -620,6 +674,97 @@ exports.resetPassword = async (req, res, next) => {
       status: "Success",
       message: "Password reset successfully",
       data: checkexist
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: "error",
+      message: err.message
+    });
+  }
+};
+
+
+exports.resendOtp = async (req, res, next) => {
+  try {
+    const { email, phone } = req.body;
+    if (!email && !phone) {
+      return next(
+        res.status(400).json({
+          status: "fail",
+          message: "Please provide Email or Phone !!!"
+        })
+      );
+    }
+
+    const formattedPhone = null;
+    if (phone) {
+      formattedPhone = formatPhone(phone);
+      if (!formattedPhone) {
+        return res.status(400).json({
+          status: "fail",
+          message: "Invalid phone number format. Please provide a valid phone number."
+        });
+      }
+    }
+
+    const checkexist = await user.findOne({ $or: [{ email }, { phone: formattedPhone }] });
+    if (!checkexist) {
+      return next(
+        res.status(404).json({
+          status: "fail",
+          message: "User dose not exist with this email or phone number",
+        })
+      );
+    }
+
+    
+    try {
+      applyOtpSecurity(checkexist);
+    } catch (err) {
+      return next(
+        res.status(429).json({
+          status: "fail",
+          message: err.message,
+        })
+      );
+    }
+
+    const otp = generateOtp();
+    await hashOtp(otp);
+    checkexist.otp = otp;
+    checkexist.otpExpiry = Date.now() + 5 * 60 * 1000;
+    await checkexist.save();
+
+
+    try {
+      await sendEmail({
+        to: email || checkexist.email,
+        subject: "KikStart OTP Resend - Verify Your Identity 🔐",
+        html: resendOtpTemplate(checkexist.name, otp)
+      });
+    } catch (err) {
+      console.log("Email failed:", err.message);
+    }
+
+    const message = otpSMS({
+      otp: otp,
+      type: "resend", // signup | login | reset | resend
+    });
+
+    await sendsms({
+      to: formattedPhone,
+      message,
+    });
+
+    const payload = {
+      _id: checkexist._id
+    }
+    const token = generateToken(payload);
+    console.log(token)
+
+    res.status(200).json({
+      status: "Success",
+      message: "Otp send successfully"
     });
   } catch (err) {
     res.status(400).json({

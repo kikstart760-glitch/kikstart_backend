@@ -34,12 +34,22 @@ const authSchema = new mongoose.Schema(
     otp : {
         type: String,
     },
-    otpExpires : {
+    otpExpiry : {
         type: Date,
+    },
+    otpCooldown: {
+        type: Date,
+    },
+    otpRequestCount: { 
+        type: Number,
+        default: 0 
     },
     isverified : {
         type: Boolean,
         default: false,
+    },
+    otpRequestDate: {
+        type: Date,
     },
     deleteAt: {
         type: Date,
@@ -64,3 +74,5 @@ const authSchema = new mongoose.Schema(
     timestamps: true,
 },
 );
+
+module.exports = mongoose.model("Auth", authSchema);

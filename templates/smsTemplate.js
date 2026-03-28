@@ -11,6 +11,9 @@ exports.otpSMS = ({ otp, type, appName = "KikStart", expiry = 5 }) => {
     case "reset":
       return `${brand} Password reset code: ${otp}. This code will expire in ${expiry} minutes. Do not share it. If you didn't request this, secure your account immediately.`;
 
+    case "resend":
+      return `${brand} Your OTP has been resent: ${otp}. It is valid for ${expiry} minutes. Do not share this code. If you did not request this, please ignore this message.`;
+
     default:
       return `${brand} Your OTP is ${otp}. Valid for ${expiry} minutes. Do not share this code.`;
   }
