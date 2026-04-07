@@ -20,8 +20,12 @@ const middleware = (req, res, next) => {
 
 }
 
-const generateToken = (userdata) => {
-    return jwt.sign(userdata, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '7d' });
+const accessToken = (userdata) => {
+    return jwt.sign(userdata, process.env.JWT_ACCESS_SECRET, { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m' });
 }
 
-module.exports = { middleware, generateToken };
+const refreshToken = (userdata) => {
+    return jwt.sign(userdata, process.env.JWT_REFRESH_SECRET, { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' });
+}
+
+module.exports = { middleware, accessToken, refreshToken };

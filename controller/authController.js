@@ -1,5 +1,5 @@
 const user = require('../models/authModel');
-const {generateToken} = require('../Middleware/Middleware');
+const {accessToken,refreshToken} = require('../Middleware/Middleware');
 const bcrypt = require('bcryptjs')
 const { 
   generateOtp,
@@ -95,13 +95,6 @@ exports.signUp = async (req, res, next) => {
       otpCooldown: Date.now() + 60 * 1000,
     });
     await userData.save();
-
-
-    const payload = {
-      _id: userData._id
-    }
-    const token = generateToken(payload);
-    console.log(token)
 
     try {
       await sendEmail({
@@ -237,11 +230,6 @@ exports.verifySignupOTP = async (req, res, next) => {
       console.log("Email failed:", err.message);
     }
 
-
-    const token = generateToken({ _id: checkexist._id });
-    console.log(token);
-
-
     res.status(200).json({
       status: "success",
       message: "OTP verified successfully",
@@ -328,9 +316,6 @@ exports.login = async (req, res, next) => {
     checkexist.otpExpiry = Date.now() + 10 * 60 * 1000;
     await checkexist.save();
 
-    const token = generateToken({ _id: checkexist._id });
-    console.log(token);
-
     try {
       await sendEmail({
         to: checkexist.email,
@@ -340,7 +325,6 @@ exports.login = async (req, res, next) => {
     } catch (err) {
       console.log("Email failed:", err.message);
     }
-
 
     const message = otpSMS({
       otp: otp,
@@ -355,7 +339,6 @@ exports.login = async (req, res, next) => {
     res.status(200).json({
       status: "success",
       message: "OTP sent for verification Process",
-      token,
       data: checkexist
     });
   } catch (err) {
@@ -444,7 +427,6 @@ exports.verifyLoginOTP = async (req, res, next) => {
     checkexist.otpAttempts = 0;
     checkexist.otpBlockedUntil = null;
     await checkexist.save();
-    
 
     const device = getDevice(req);
     const ip = getIP(req);
@@ -468,13 +450,21 @@ exports.verifyLoginOTP = async (req, res, next) => {
     }
 
 
-    const token = generateToken({ _id: checkexist._id });
-    console.log(token);
+    const payload = {
+      _id: checkexist._id
+    }
+    const token = accessToken(payload);
+    const refreshPayload = {
+      _id: checkexist._id
+    }
+    const refresh = refreshToken(refreshPayload);
 
 
     res.status(200).json({
       status: "success",
       message: "OTP verified successfully",
+      token,
+      refresh,
       data: checkexist,
     });
   } catch (err) {
@@ -555,12 +545,6 @@ exports.forgetPassword = async (req, res, next) => {
       to: checkexist.phone,
       message,
     });
-
-    const payload = {
-      _id: checkexist._id
-    }
-    const token = generateToken(payload);
-    console.log(token)
 
     res.status(200).json({
       status: "Success",
@@ -742,12 +726,6 @@ exports.resetPassword = async (req, res, next) => {
       console.log("Email failed:", err.message);
     }
 
-    const payload = {
-      _id: checkexist._id
-    }
-    const token = generateToken(payload);
-    console.log(token)
-
     console.log(changePassword)
 
     res.status(200).json({
@@ -836,12 +814,6 @@ exports.resendOtp = async (req, res, next) => {
       to: checkexist.phone,
       message,
     });
-
-    const payload = {
-      _id: checkexist._id
-    }
-    const token = generateToken(payload);
-    console.log(token)
 
     res.status(200).json({
       status: "Success",
