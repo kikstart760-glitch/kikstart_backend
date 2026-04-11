@@ -55,6 +55,10 @@ const authSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
     },
+    isOtpVerified: {
+        type: Boolean,
+        default: false,
+    },
     otpRequestDate: {
         type: Date,
     },

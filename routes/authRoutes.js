@@ -19,7 +19,7 @@ router.post("/verify-otp", authController.verifyOtp);
 router.post("/reset-password", authController.resetPassword);
 
 // Token refresh route
-router.post("/refresh-token", authController.refreshToken);
+router.post("/refresh-token", authController.refreshSession);
 
 // Logout route
 router.post("/logout", authController.logout);

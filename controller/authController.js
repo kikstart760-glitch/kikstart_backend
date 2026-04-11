@@ -159,7 +159,7 @@ exports.verifySignupOTP = async (req, res, next) => {
       return next(
         res.status(404).json({
           status: "fail",
-          message: "User dose not exist with this email or phone number"
+          message: "User does not exist with this email or phone number"
         })
       );
     }
@@ -405,7 +405,8 @@ exports.verifyLoginOTP = async (req, res, next) => {
       );
     }
 
-    const isOtpValid = await compareOtp(otp, checkexist.otp);
+    const cleanOtp = otp.trim();
+    const isOtpValid = await compareOtp(cleanOtp, checkexist.otp);
     if (!isOtpValid) {
       checkexist.otpAttempts += 1;
       if (checkexist.otpAttempts >= 5) {
@@ -526,7 +527,7 @@ exports.forgetPassword = async (req, res, next) => {
       return next(
         res.status(404).json({
           status: "fail",
-          message: "User dose not exist with this email or phone number",
+          message: "User does not exist with this email or phone number",
         })
       );
     }
@@ -571,7 +572,7 @@ exports.forgetPassword = async (req, res, next) => {
 
     res.status(200).json({
       status: "Success",
-      message: "Otp send successfully"
+      message: "Otp sent successfully"
     });
   } catch (err) {
     res.status(400).json({
@@ -635,7 +636,8 @@ exports.verifyOtp = async (req, res, next) => {
       );
     }
 
-    const isOtpValid = await compareOtp(otp, checkexist.otp);
+    const cleanOtp = otp.trim();
+    const isOtpValid = await compareOtp(cleanOtp, checkexist.otp);
     if (!isOtpValid) {
       checkexist.otpAttempts += 1;
       if (checkexist.otpAttempts >= 5) {
@@ -657,6 +659,7 @@ exports.verifyOtp = async (req, res, next) => {
     checkexist.otpCooldown = null;
     checkexist.otpAttempts = 0;
     checkexist.otpBlockedUntil = null;
+    checkexist.isOtpVerified = true;
     await checkexist.save();
 
     try {
@@ -720,9 +723,16 @@ exports.resetPassword = async (req, res, next) => {
       return next(
         res.status(404).json({
           status: "fail",
-          message: "User dose not exist with this email or phone number",
+          message: "User does not exist with this email or phone number",
         })
       );
+    }
+
+    if (!checkexist.isOtpVerified) {
+      return res.status(403).json({
+        status: "fail",
+        message: "OTP verification required before resetting password",
+      });
     }
 
     const checkpassword = await bcrypt.compare(password, checkexist.password);
@@ -738,6 +748,8 @@ exports.resetPassword = async (req, res, next) => {
     const salt = await bcrypt.genSalt(10)
     const hashpassword = await bcrypt.hash(password, salt);
     const changePassword = await checkexist.updateOne({ password: hashpassword });
+    checkexist.isOtpVerified = false;
+    await checkexist.save();
 
     await Session.updateMany(
       { userId: checkexist._id },
@@ -798,7 +810,7 @@ exports.resendOtp = async (req, res, next) => {
       return next(
         res.status(404).json({
           status: "fail",
-          message: "User dose not exist with this email or phone number",
+          message: "User does not exist with this email or phone number",
         })
       );
     }
@@ -845,7 +857,7 @@ exports.resendOtp = async (req, res, next) => {
 
     res.status(200).json({
       status: "Success",
-      message: "Otp send successfully"
+      message: "Otp sent successfully"
     });
   } catch (err) {
     res.status(400).json({
@@ -874,6 +886,12 @@ exports.refreshSession = async (req, res) => {
       refreshToken: token,
       isValid: true
     });
+
+    if (!session) {
+      return res.status(403).json({
+        message: "Invalid session",
+      });
+    }
 
     // 🔐 Detect token reuse attack
     if (session.refreshToken !== token) {
