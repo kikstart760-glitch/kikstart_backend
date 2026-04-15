@@ -2,32 +2,79 @@
 const baseTemplate = (content) => `
 <!DOCTYPE html>
 <html>
-<body style="margin:0; padding:0; background-color:#f4f6f8; font-family:Arial, sans-serif;">
+<body style="margin:0; padding:0; background-color:#eaf2f7; font-family:Arial, sans-serif;">
 
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8; padding:20px 0;">
+  <!-- PREHEADER -->
+  <div style="display:none; max-height:0; overflow:hidden;">
+    Your luxury journey starts here ✈️
+  </div>
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#eaf2f7;">
     <tr>
       <td align="center">
 
-        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff; border-radius:8px; overflow:hidden;">
-          
+        <!-- MAIN CONTAINER -->
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+
           <!-- HEADER -->
           <tr>
-            <td align="center" style="background:#ff416c; padding:20px;">
-              <img src="cid:logo" width="120" style="display:block;" />
+            <td align="center" style="padding:30px 20px; background:#0f2f3a; color:#ffffff;">
+              <img src="cid:logo" width="120" style="margin-bottom:10px;" />
+              
+              <div style="font-size:24px; font-weight:bold;">
+                Escape Beyond Travel
+              </div>
+
+              <div style="font-size:14px; margin-top:8px;">
+                Luxury Travel Reimagined
+              </div>
             </td>
           </tr>
 
-          <!-- CONTENT -->
+          <!-- CONTENT (CENTERED + CARD) -->
           <tr>
-            <td style="padding:30px; color:#333;">
-              ${content}
+            <td align="center" style="background:#eaf2f7; padding:30px;">
+              
+              <table width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff; border:1px solid #e3e8ee;">
+                <tr>
+                  <td align="center" style="padding:30px; color:#333; text-align:center;">
+                    ${content}
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td align="center" style="padding:20px;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td bgcolor="#2bb3c0" style="padding:12px 25px;">
+                    <a href="#" style="color:#ffffff; text-decoration:none; font-size:14px;">
+                      Explore Destinations
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
           <!-- FOOTER -->
           <tr>
-            <td align="center" style="font-size:12px; color:#888; padding:20px; background:#fafafa;">
-              Need help? support@kikstart.com
+            <td style="
+              background:#0f2f3a;
+              color:#cfd8dc;
+              text-align:center;
+              padding:20px;
+              font-size:12px;
+            ">
+              <div>Escape Beyond Travel</div>
+              <div style="margin-top:5px;">Luxury journeys tailored for you</div>
+              <div style="margin-top:8px; font-size:11px;">
+                support@escapetravel.com
+              </div>
             </td>
           </tr>
 
@@ -43,26 +90,42 @@ const baseTemplate = (content) => `
 
 
 // ================= COMMON STYLES =================
-const titleStyle = "font-size:22px; font-weight:bold; margin-bottom:10px;";
-const textStyle = "font-size:14px; line-height:1.6; margin-bottom:15px;";
-const otpStyle = `
-  font-size:28px;
-  letter-spacing:8px;
-  text-align:center;
-  background:#f1f3f6;
-  padding:15px;
-  border-radius:6px;
-  margin:20px 0;
+const titleStyle = `
+  font-size:20px;
   font-weight:bold;
+  margin-bottom:12px;
+  color:#0f2f3a;
+  text-align:center;
 `;
+
+const textStyle = `
+  font-size:14px;
+  line-height:1.7;
+  color:#555;
+  margin-bottom:15px;
+  text-align:center;
+`;
+
+const otpStyle = `
+  font-size:30px;
+  letter-spacing:10px;
+  text-align:center;
+  background:#f0f4f8;
+  padding:18px;
+  margin:25px auto;
+  font-weight:bold;
+  color:#0f2f3a;
+  display:inline-block;
+`;
+
 const btnStyle = `
   display:inline-block;
   padding:12px 25px;
-  background:#ff416c;
+  background:#2bb3c0;
   color:#ffffff;
   text-decoration:none;
-  border-radius:5px;
   font-size:14px;
+  margin-top:10px;
 `;
 
 
@@ -71,10 +134,9 @@ const btnStyle = `
 // Register Success
 const registerSuccessTemplate = (name) =>
   baseTemplate(`
-    <div style="${titleStyle}">Welcome to KikStart, ${name} 🎉</div>
+    <div style="${titleStyle}">Welcome to Escape Beyond Travel, ${name} 🎉</div>
     <p style="${textStyle}">Your account has been successfully created.</p>
-    <p style="${textStyle}">Start exploring and enjoy 🚀</p>
-    <a href="#" style="${btnStyle}">Get Started</a>
+    <p style="${textStyle}">Start exploring premium destinations and experiences.</p>
   `);
 
 // Register OTP
@@ -92,7 +154,7 @@ const loginOtpTemplate = (name, otp) =>
     <div style="${titleStyle}">Login Verification</div>
     <p style="${textStyle}">Hello ${name}, your login OTP:</p>
     <div style="${otpStyle}">${otp}</div>
-    <p style="${textStyle}">If not you, secure your account immediately.</p>
+    <p style="${textStyle}">If this wasn't you, secure your account immediately.</p>
   `);
 
 // Login Success
@@ -101,7 +163,7 @@ const loginSuccessTemplate = (name, date, location, device, resetLink) =>
     <div style="${titleStyle}">Login Successful, ${name} ✅</div>
 
     <p style="${textStyle}">
-      Hi ${name}, you have successfully logged into your KikStart account.
+      You have successfully logged into your account.
     </p>
 
     <p style="${textStyle}">
@@ -146,7 +208,7 @@ const passwordChangedTemplate = (name) =>
     <p style="${textStyle}">
       If this wasn’t you, contact support immediately.
     </p>
-    <a href="mailto:support@kikstart.com" style="${btnStyle}">
+    <a href="mailto:support@escapetravel.com" style="${btnStyle}">
       Contact Support
     </a>
   `);

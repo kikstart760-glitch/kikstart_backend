@@ -1,4 +1,4 @@
-const otpSMS = ({ otp, type, appName = "KikStart", expiry = 5 }) => {
+const otpSMS = ({ otp, type, appName = "EscapeTravel", expiry = 5 }) => {
   const brand = `[${appName}]`;
 
   switch (type) {
